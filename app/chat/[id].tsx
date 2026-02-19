@@ -20,11 +20,15 @@ import { doc, getDoc } from "firebase/firestore";
 import { db } from "../../src/config/firebase";
 import ChatBubble from "../../src/components/ChatBubble";
 import { chat, ChatMessage } from "../../src/services/ai";
+import { useLanguage } from "../../src/context/LanguageContext";
+import { t, Language } from "../../src/i18n";
 
 export default function ChatScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { language: appLanguage } = useLanguage();
   const [transcript, setTranscript] = useState("");
   const [noteTitle, setNoteTitle] = useState("");
+  const [noteLanguage, setNoteLanguage] = useState<Language>("es");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -33,6 +37,9 @@ export default function ChatScreen() {
   const [error, setError] = useState("");
   const flatListRef = useRef<FlatList>(null);
   const theme = useTheme();
+
+  // Use the note's language for AI responses, app language for UI
+  const uiLang = appLanguage;
 
   useEffect(() => {
     loadNote();
@@ -45,6 +52,7 @@ export default function ChatScreen() {
         const data = noteDoc.data();
         setTranscript(data.transcript || "");
         setNoteTitle(data.title || "Voice Note");
+        setNoteLanguage(data.language || "es");
       }
     } catch (e: any) {
       setError(e.message || "Failed to load note");
@@ -64,7 +72,8 @@ export default function ChatScreen() {
     setLoading(true);
 
     try {
-      const reply = await chat(transcript, updatedMessages);
+      // AI responds in the note's language
+      const reply = await chat(transcript, updatedMessages, noteLanguage);
       setMessages([...updatedMessages, { role: "assistant", content: reply }]);
     } catch (e: any) {
       setError(e.message || "Failed to get AI response");
@@ -72,6 +81,12 @@ export default function ChatScreen() {
       setLoading(false);
     }
   };
+
+  const suggestions = [
+    t("summarize", uiLang),
+    t("keyPoints", uiLang),
+    t("actionItems", uiLang),
+  ];
 
   if (initialLoading) {
     return (
@@ -95,7 +110,9 @@ export default function ChatScreen() {
             onPress={() => setShowTranscript(!showTranscript)}
             compact
           >
-            {showTranscript ? "Hide transcript" : "Show transcript"}
+            {showTranscript
+              ? t("hideTranscript", uiLang)
+              : t("showTranscript", uiLang)}
           </Chip>
         </View>
 
@@ -107,10 +124,10 @@ export default function ChatScreen() {
             ]}
           >
             <Text variant="labelMedium" style={{ marginBottom: 4 }}>
-              Transcript
+              {t("transcript", uiLang)}
             </Text>
             <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-              {transcript || "No transcript available."}
+              {transcript || t("noTranscript", uiLang)}
             </Text>
           </View>
         )}
@@ -133,14 +150,10 @@ export default function ChatScreen() {
                 variant="bodyLarge"
                 style={{ color: theme.colors.onSurfaceVariant, textAlign: "center" }}
               >
-                Ask anything about your note "{noteTitle}"
+                {t("askAnything", uiLang, { title: noteTitle })}
               </Text>
               <View style={styles.suggestions}>
-                {[
-                  "Summarize this note",
-                  "What are the key points?",
-                  "List action items",
-                ].map((suggestion) => (
+                {suggestions.map((suggestion) => (
                   <Chip
                     key={suggestion}
                     onPress={() => setInput(suggestion)}
@@ -159,7 +172,7 @@ export default function ChatScreen() {
           <View style={styles.typingIndicator}>
             <ActivityIndicator size="small" />
             <Text variant="bodySmall" style={{ marginLeft: 8, opacity: 0.6 }}>
-              AI is thinking...
+              {t("aiThinking", uiLang)}
             </Text>
           </View>
         )}
@@ -174,7 +187,7 @@ export default function ChatScreen() {
           <TextInput
             value={input}
             onChangeText={setInput}
-            placeholder="Ask about your note..."
+            placeholder={t("askPlaceholder", uiLang)}
             mode="outlined"
             style={styles.textInput}
             dense
@@ -196,7 +209,7 @@ export default function ChatScreen() {
         visible={!!error}
         onDismiss={() => setError("")}
         duration={3000}
-        action={{ label: "OK", onPress: () => setError("") }}
+        action={{ label: t("ok", uiLang), onPress: () => setError("") }}
       >
         {error}
       </Snackbar>

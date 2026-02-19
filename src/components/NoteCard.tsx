@@ -2,9 +2,11 @@ import React from "react";
 import { StyleSheet } from "react-native";
 import { Card, Text, Chip, IconButton, useTheme } from "react-native-paper";
 import { VoiceNote } from "../services/storage";
+import { Language, t, LANGUAGES } from "../i18n";
 
 interface NoteCardProps {
   note: VoiceNote;
+  language: Language;
   onPress: () => void;
   onDelete: () => void;
 }
@@ -24,16 +26,18 @@ function formatDate(date: Date): string {
   });
 }
 
-const statusLabels: Record<VoiceNote["status"], string> = {
-  recording: "Recording...",
-  transcribing: "Transcribing...",
-  ready: "Ready",
-  error: "Error",
-};
-
-export default function NoteCard({ note, onPress, onDelete }: NoteCardProps) {
+export default function NoteCard({ note, language, onPress, onDelete }: NoteCardProps) {
   const theme = useTheme();
   const isReady = note.status === "ready";
+
+  const statusKey = {
+    recording: "statusRecording",
+    transcribing: "statusTranscribing",
+    ready: "statusReady",
+    error: "statusError",
+  } as const;
+
+  const noteLang = LANGUAGES.find((l) => l.code === note.language);
 
   return (
     <Card
@@ -72,8 +76,13 @@ export default function NoteCard({ note, onPress, onDelete }: NoteCardProps) {
             },
           ]}
         >
-          {statusLabels[note.status]}
+          {t(statusKey[note.status], language)}
         </Chip>
+        {noteLang && (
+          <Chip compact style={[styles.chip, styles.langChip]}>
+            {noteLang.flag}
+          </Chip>
+        )}
       </Card.Content>
     </Card>
   );
@@ -91,8 +100,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     paddingTop: 8,
     paddingBottom: 4,
+    gap: 8,
   },
   chip: {
     alignSelf: "flex-start",
+  },
+  langChip: {
+    minWidth: 0,
   },
 });

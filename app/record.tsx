@@ -4,7 +4,7 @@ import {
   Text,
   IconButton,
   TextInput,
-  Button,
+  SegmentedButtons,
   useTheme,
   Snackbar,
 } from "react-native-paper";
@@ -12,6 +12,8 @@ import { useRouter } from "expo-router";
 import { startRecording, stopRecording } from "../src/services/audio";
 import { saveVoiceNote, updateTranscript, updateNoteStatus } from "../src/services/storage";
 import { transcribeAudio } from "../src/services/transcription";
+import { useLanguage } from "../src/context/LanguageContext";
+import { t, Language, LANGUAGES } from "../src/i18n";
 
 function formatTime(seconds: number): string {
   const mins = Math.floor(seconds / 60);
@@ -20,6 +22,8 @@ function formatTime(seconds: number): string {
 }
 
 export default function RecordScreen() {
+  const { language } = useLanguage();
+  const [meetingLang, setMeetingLang] = useState<Language>(language);
   const [isRecording, setIsRecording] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [title, setTitle] = useState("");
@@ -56,15 +60,15 @@ export default function RecordScreen() {
       const { uri, duration } = await stopRecording();
       setIsRecording(false);
 
-      const noteTitle = title.trim() || `Note ${new Date().toLocaleDateString()}`;
+      const noteTitle =
+        title.trim() || `Note ${new Date().toLocaleDateString()}`;
 
-      // Save to Firebase
-      const noteId = await saveVoiceNote(uri, noteTitle, duration);
+      // Save to Firebase with language
+      const noteId = await saveVoiceNote(uri, noteTitle, duration, meetingLang);
 
-      // Transcribe in background
+      // Transcribe in the selected meeting language
       try {
-        const audioUrl = uri; // Will use the Firebase URL from storage
-        const transcript = await transcribeAudio(audioUrl);
+        const transcript = await transcribeAudio(uri, meetingLang);
         await updateTranscript(noteId, transcript);
       } catch (e: any) {
         console.warn("Transcription failed:", e.message);
@@ -83,12 +87,30 @@ export default function RecordScreen() {
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <View style={styles.content}>
         <TextInput
-          label="Note title (optional)"
+          label={t("noteTitleLabel", language)}
           value={title}
           onChangeText={setTitle}
           mode="outlined"
           style={styles.input}
           disabled={isRecording || saving}
+        />
+
+        {/* Meeting language selector */}
+        <Text
+          variant="labelLarge"
+          style={[styles.langLabel, { color: theme.colors.onSurfaceVariant }]}
+        >
+          {t("meetingLanguage", language)}
+        </Text>
+        <SegmentedButtons
+          value={meetingLang}
+          onValueChange={(value) => setMeetingLang(value as Language)}
+          buttons={LANGUAGES.map((lang) => ({
+            value: lang.code,
+            label: `${lang.flag} ${lang.label}`,
+            disabled: isRecording || saving,
+          }))}
+          style={styles.langSelector}
         />
 
         <View style={styles.timerContainer}>
@@ -107,11 +129,8 @@ export default function RecordScreen() {
                   { backgroundColor: theme.colors.error },
                 ]}
               />
-              <Text
-                variant="labelLarge"
-                style={{ color: theme.colors.error }}
-              >
-                Recording
+              <Text variant="labelLarge" style={{ color: theme.colors.error }}>
+                {t("recording", language)}
               </Text>
             </View>
           )}
@@ -146,7 +165,7 @@ export default function RecordScreen() {
             variant="bodyMedium"
             style={[styles.savingText, { color: theme.colors.onSurfaceVariant }]}
           >
-            Saving and transcribing...
+            {t("savingAndTranscribing", language)}
           </Text>
         )}
       </View>
@@ -155,7 +174,7 @@ export default function RecordScreen() {
         visible={!!error}
         onDismiss={() => setError("")}
         duration={3000}
-        action={{ label: "OK", onPress: () => setError("") }}
+        action={{ label: t("ok", language), onPress: () => setError("") }}
       >
         {error}
       </Snackbar>
@@ -175,7 +194,13 @@ const styles = StyleSheet.create({
   },
   input: {
     width: "100%",
-    marginBottom: 48,
+    marginBottom: 24,
+  },
+  langLabel: {
+    marginBottom: 8,
+  },
+  langSelector: {
+    marginBottom: 32,
   },
   timerContainer: {
     alignItems: "center",

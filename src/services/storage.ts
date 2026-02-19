@@ -17,6 +17,7 @@ import {
 } from "firebase/storage";
 import { db, storage } from "../config/firebase";
 import * as FileSystem from "expo-file-system";
+import { Language } from "../i18n";
 
 export interface VoiceNote {
   id: string;
@@ -24,6 +25,7 @@ export interface VoiceNote {
   duration: number; // seconds
   audioUrl: string;
   transcript: string;
+  language: Language;
   createdAt: Date;
   status: "recording" | "transcribing" | "ready" | "error";
 }
@@ -33,7 +35,8 @@ const COLLECTION = "voiceNotes";
 export async function saveVoiceNote(
   localAudioUri: string,
   title: string,
-  duration: number
+  duration: number,
+  language: Language = "es"
 ): Promise<string> {
   // Upload audio to Firebase Storage
   const filename = `recordings/${Date.now()}.m4a`;
@@ -51,6 +54,7 @@ export async function saveVoiceNote(
     duration,
     audioUrl,
     transcript: "",
+    language,
     createdAt: Timestamp.now(),
     status: "transcribing",
   });

@@ -11,6 +11,8 @@
  *   - Ollama (local): http://localhost:11434/v1
  */
 
+import { Language } from "../i18n";
+
 const AI_API_KEY = process.env.EXPO_PUBLIC_AI_API_KEY || "";
 const AI_BASE_URL =
   process.env.EXPO_PUBLIC_AI_BASE_URL || "https://api.groq.com/openai/v1";
@@ -22,13 +24,24 @@ export interface ChatMessage {
   content: string;
 }
 
-const SYSTEM_PROMPT = `You are a helpful assistant that analyzes meeting transcripts and voice notes.
+const SYSTEM_PROMPTS: Record<Language, string> = {
+  es: `Eres un asistente útil que analiza transcripciones de reuniones y notas de voz.
+Respondes preguntas sobre el contenido, resumes puntos clave, extraes tareas pendientes,
+y ayudas al usuario a entender sus notas. Sé conciso y útil. SIEMPRE responde en español.`,
+  en: `You are a helpful assistant that analyzes meeting transcripts and voice notes.
 You answer questions about the content, summarize key points, extract action items,
-and help the user understand their notes. Be concise and helpful.`;
+and help the user understand their notes. Be concise and helpful. ALWAYS respond in English.`,
+};
+
+const TRANSCRIPT_INTROS: Record<Language, string> = {
+  es: "Aquí está la transcripción de la nota de voz/reunión:",
+  en: "Here is the transcript of the voice note/meeting:",
+};
 
 export async function chat(
   transcript: string,
-  messages: ChatMessage[]
+  messages: ChatMessage[],
+  language: Language = "es"
 ): Promise<string> {
   if (!AI_API_KEY) {
     throw new Error(
@@ -37,10 +50,10 @@ export async function chat(
   }
 
   const fullMessages: ChatMessage[] = [
-    { role: "system", content: SYSTEM_PROMPT },
+    { role: "system", content: SYSTEM_PROMPTS[language] },
     {
       role: "system",
-      content: `Here is the transcript of the voice note/meeting:\n\n${transcript}`,
+      content: `${TRANSCRIPT_INTROS[language]}\n\n${transcript}`,
     },
     ...messages,
   ];

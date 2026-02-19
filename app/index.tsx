@@ -3,7 +3,10 @@ import { View, FlatList, StyleSheet } from "react-native";
 import { FAB, Text, useTheme, Snackbar } from "react-native-paper";
 import { useRouter, useFocusEffect } from "expo-router";
 import NoteCard from "../src/components/NoteCard";
+import LanguageToggle from "../src/components/LanguageToggle";
 import { VoiceNote, getAllNotes, deleteNote } from "../src/services/storage";
+import { useLanguage } from "../src/context/LanguageContext";
+import { t } from "../src/i18n";
 
 export default function HomeScreen() {
   const [notes, setNotes] = useState<VoiceNote[]>([]);
@@ -11,6 +14,7 @@ export default function HomeScreen() {
   const [error, setError] = useState("");
   const router = useRouter();
   const theme = useTheme();
+  const { language } = useLanguage();
 
   const loadNotes = useCallback(async () => {
     try {
@@ -41,13 +45,21 @@ export default function HomeScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      {/* Header with title and language toggle */}
+      <View style={styles.header}>
+        <Text variant="headlineMedium" style={{ color: theme.colors.onSurface }}>
+          {t("voiceNotes", language)}
+        </Text>
+      </View>
+      <LanguageToggle />
+
       {notes.length === 0 && !loading ? (
         <View style={styles.empty}>
           <Text variant="headlineSmall" style={styles.emptyText}>
-            No voice notes yet
+            {t("noNotesYet", language)}
           </Text>
           <Text variant="bodyMedium" style={styles.emptySubtext}>
-            Tap the mic button to record your first note
+            {t("tapMicToRecord", language)}
           </Text>
         </View>
       ) : (
@@ -57,6 +69,7 @@ export default function HomeScreen() {
           renderItem={({ item }) => (
             <NoteCard
               note={item}
+              language={language}
               onPress={() => router.push(`/chat/${item.id}`)}
               onDelete={() => handleDelete(item)}
             />
@@ -67,7 +80,7 @@ export default function HomeScreen() {
 
       <FAB
         icon="microphone"
-        label="Record"
+        label={t("record", language)}
         style={[styles.fab, { backgroundColor: theme.colors.primary }]}
         color={theme.colors.onPrimary}
         onPress={() => router.push("/record")}
@@ -77,7 +90,7 @@ export default function HomeScreen() {
         visible={!!error}
         onDismiss={() => setError("")}
         duration={3000}
-        action={{ label: "OK", onPress: () => setError("") }}
+        action={{ label: t("ok", language), onPress: () => setError("") }}
       >
         {error}
       </Snackbar>
@@ -88,6 +101,11 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  header: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 4,
   },
   list: {
     paddingTop: 8,
