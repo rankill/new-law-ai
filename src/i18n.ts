@@ -76,6 +76,28 @@ const strings = {
   statusReady: { es: "Listo", en: "Ready" },
   statusError: { es: "Error", en: "Error" },
 
+  // Auth
+  appName: { es: "Voice Notes AI", en: "Voice Notes AI" },
+  appTagline: {
+    es: "Graba reuniones, transcribe y chatea con IA",
+    en: "Record meetings, transcribe, and chat with AI",
+  },
+  email: { es: "Correo electrónico", en: "Email" },
+  password: { es: "Contraseña", en: "Password" },
+  signInOrCreate: {
+    es: "Iniciar sesión / Crear cuenta",
+    en: "Sign in / Create account",
+  },
+  signInHint: {
+    es: "Si no tienes cuenta, se creará automáticamente",
+    en: "If you don't have an account, one will be created automatically",
+  },
+  signInError: {
+    es: "Error al iniciar sesión. Intenta de nuevo.",
+    en: "Sign in failed. Please try again.",
+  },
+  signOut: { es: "Cerrar sesión", en: "Sign out" },
+
   // General
   ok: { es: "OK", en: "OK" },
   language: { es: "Idioma", en: "Language" },

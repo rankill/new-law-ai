@@ -9,8 +9,10 @@ Built with React Native (Expo), Firebase, and Material Design 3.
 - **Record** meetings and voice notes with one tap
 - **Transcribe** recordings automatically using Deepgram
 - **Chat with AI** about your transcripts — ask for summaries, action items, key points
+- **Bilingual** — full Spanish/English support (UI, transcription, AI chat). Spanish by default
+- **Firebase Auth** — email sign-in with per-user data isolation
 - **Material Design 3** clean UI with dark mode support
-- **Cloud storage** via Firebase (audio files + transcripts)
+- **Cloud storage** via Firebase (audio files + transcripts, scoped per user)
 
 ## Quick Start
 
@@ -40,8 +42,9 @@ npm install
 3. **Set up Firebase**
 
    - Create a project at [Firebase Console](https://console.firebase.google.com/)
-   - Enable **Firestore Database** (start in test mode)
-   - Enable **Storage** (start in test mode)
+   - Enable **Authentication** → Sign-in method → **Email/Password**
+   - Enable **Firestore Database** (start in test mode, then deploy `firestore.rules`)
+   - Enable **Storage** (start in test mode, then deploy `storage.rules`)
    - Copy your web app config
 
 4. **Configure environment variables**
@@ -82,26 +85,45 @@ The app defaults to **Groq** (free, fast Llama models) but works with any OpenAI
 | OpenAI | `https://api.openai.com/v1` | `gpt-4o-mini` |
 | Ollama (local) | `http://localhost:11434/v1` | `llama3` |
 
+## Security Rules
+
+The repo includes ready-to-deploy Firestore and Storage security rules that enforce per-user data isolation:
+
+```bash
+# Deploy with Firebase CLI
+firebase deploy --only firestore:rules,storage
+```
+
+See `firestore.rules` and `storage.rules` for details.
+
 ## Project Structure
 
 ```
 ├── app/                    # Screens (Expo Router)
-│   ├── _layout.tsx         # Root layout with Material theme
+│   ├── _layout.tsx         # Root layout + auth gate
+│   ├── sign-in.tsx         # Sign-in / create account
 │   ├── index.tsx           # Home — list of voice notes
 │   ├── record.tsx          # Recording screen
 │   └── chat/[id].tsx       # AI chat screen
 ├── src/
 │   ├── components/         # UI components
 │   │   ├── NoteCard.tsx    # Voice note list card
-│   │   └── ChatBubble.tsx  # Chat message bubble
+│   │   ├── ChatBubble.tsx  # Chat message bubble
+│   │   └── LanguageToggle.tsx # ES/EN language switcher
 │   ├── config/
-│   │   └── firebase.ts     # Firebase initialization
+│   │   └── firebase.ts     # Firebase init (Auth + Firestore + Storage)
+│   ├── context/
+│   │   ├── AuthContext.tsx  # Firebase Auth state
+│   │   └── LanguageContext.tsx # App language preference
 │   ├── services/
 │   │   ├── audio.ts        # Recording (expo-av)
-│   │   ├── storage.ts      # Firebase Storage + Firestore
-│   │   ├── transcription.ts # Deepgram API
-│   │   └── ai.ts           # AI chat (Groq/OpenAI-compatible)
+│   │   ├── storage.ts      # Firebase Storage + Firestore (user-scoped)
+│   │   ├── transcription.ts # Deepgram API (ES/EN)
+│   │   └── ai.ts           # AI chat (Groq/OpenAI-compatible, ES/EN)
+│   ├── i18n.ts             # UI strings (Spanish + English)
 │   └── theme.ts            # Material Design 3 theme
+├── firestore.rules         # Firestore security rules
+├── storage.rules           # Storage security rules
 ├── app.json                # Expo config
 └── package.json
 ```

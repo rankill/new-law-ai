@@ -1,11 +1,14 @@
 import React, { useState, useCallback } from "react";
 import { View, FlatList, StyleSheet } from "react-native";
-import { FAB, Text, useTheme, Snackbar } from "react-native-paper";
+import { FAB, Text, IconButton, useTheme, Snackbar } from "react-native-paper";
 import { useRouter, useFocusEffect } from "expo-router";
+import { signOut } from "firebase/auth";
+import { auth } from "../src/config/firebase";
 import NoteCard from "../src/components/NoteCard";
 import LanguageToggle from "../src/components/LanguageToggle";
 import { VoiceNote, getAllNotes, deleteNote } from "../src/services/storage";
 import { useLanguage } from "../src/context/LanguageContext";
+import { useAuth } from "../src/context/AuthContext";
 import { t } from "../src/i18n";
 
 export default function HomeScreen() {
@@ -15,18 +18,20 @@ export default function HomeScreen() {
   const router = useRouter();
   const theme = useTheme();
   const { language } = useLanguage();
+  const { user } = useAuth();
 
   const loadNotes = useCallback(async () => {
+    if (!user) return;
     try {
       setLoading(true);
-      const data = await getAllNotes();
+      const data = await getAllNotes(user.uid);
       setNotes(data);
     } catch (e: any) {
       setError(e.message || "Failed to load notes");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user]);
 
   useFocusEffect(
     useCallback(() => {
@@ -45,11 +50,17 @@ export default function HomeScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      {/* Header with title and language toggle */}
+      {/* Header with title and sign out */}
       <View style={styles.header}>
         <Text variant="headlineMedium" style={{ color: theme.colors.onSurface }}>
           {t("voiceNotes", language)}
         </Text>
+        <IconButton
+          icon="logout"
+          size={22}
+          onPress={() => signOut(auth)}
+          accessibilityLabel={t("signOut", language)}
+        />
       </View>
       <LanguageToggle />
 
@@ -103,6 +114,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: 16,
     paddingTop: 16,
     paddingBottom: 4,

@@ -13,6 +13,7 @@ import { startRecording, stopRecording } from "../src/services/audio";
 import { saveVoiceNote, updateTranscript, updateNoteStatus } from "../src/services/storage";
 import { transcribeAudio } from "../src/services/transcription";
 import { useLanguage } from "../src/context/LanguageContext";
+import { useAuth } from "../src/context/AuthContext";
 import { t, Language, LANGUAGES } from "../src/i18n";
 
 function formatTime(seconds: number): string {
@@ -23,6 +24,7 @@ function formatTime(seconds: number): string {
 
 export default function RecordScreen() {
   const { language } = useLanguage();
+  const { user } = useAuth();
   const [meetingLang, setMeetingLang] = useState<Language>(language);
   const [isRecording, setIsRecording] = useState(false);
   const [elapsed, setElapsed] = useState(0);
@@ -63,8 +65,8 @@ export default function RecordScreen() {
       const noteTitle =
         title.trim() || `Note ${new Date().toLocaleDateString()}`;
 
-      // Save to Firebase with language
-      const noteId = await saveVoiceNote(uri, noteTitle, duration, meetingLang);
+      // Save to Firebase with language and userId
+      const noteId = await saveVoiceNote(uri, noteTitle, duration, meetingLang, user!.uid);
 
       // Transcribe in the selected meeting language
       try {

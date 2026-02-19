@@ -7,6 +7,7 @@ import {
   deleteDoc,
   query,
   orderBy,
+  where,
   Timestamp,
 } from "firebase/firestore";
 import {
@@ -26,6 +27,7 @@ export interface VoiceNote {
   audioUrl: string;
   transcript: string;
   language: Language;
+  userId: string;
   createdAt: Date;
   status: "recording" | "transcribing" | "ready" | "error";
 }
@@ -36,10 +38,11 @@ export async function saveVoiceNote(
   localAudioUri: string,
   title: string,
   duration: number,
-  language: Language = "es"
+  language: Language = "es",
+  userId: string
 ): Promise<string> {
-  // Upload audio to Firebase Storage
-  const filename = `recordings/${Date.now()}.m4a`;
+  // Upload audio to Firebase Storage under user's folder
+  const filename = `recordings/${userId}/${Date.now()}.m4a`;
   const storageRef = ref(storage, filename);
 
   const response = await fetch(localAudioUri);
@@ -55,6 +58,7 @@ export async function saveVoiceNote(
     audioUrl,
     transcript: "",
     language,
+    userId,
     createdAt: Timestamp.now(),
     status: "transcribing",
   });
@@ -81,8 +85,12 @@ export async function updateNoteStatus(
   await updateDoc(noteRef, { status });
 }
 
-export async function getAllNotes(): Promise<VoiceNote[]> {
-  const q = query(collection(db, COLLECTION), orderBy("createdAt", "desc"));
+export async function getAllNotes(userId: string): Promise<VoiceNote[]> {
+  const q = query(
+    collection(db, COLLECTION),
+    where("userId", "==", userId),
+    orderBy("createdAt", "desc")
+  );
   const snapshot = await getDocs(q);
 
   return snapshot.docs.map((doc) => ({
