@@ -1,8 +1,8 @@
 export type Language = "es" | "en";
 
 export const LANGUAGES: { code: Language; label: string; flag: string }[] = [
-  { code: "es", label: "Español", flag: "ES" },
-  { code: "en", label: "English", flag: "EN" },
+  { code: "es", label: "Español", flag: "🇪🇸" },
+  { code: "en", label: "English", flag: "🇺🇸" },
 ];
 
 // Deepgram language codes
@@ -13,7 +13,7 @@ export const DEEPGRAM_LANG: Record<Language, string> = {
 
 const strings = {
   // Home screen
-  voiceNotes: { es: "Notas de Voz", en: "Voice Notes" },
+  voiceNotes: { es: "Mis Notas", en: "My Notes" },
   record: { es: "Grabar", en: "Record" },
   noNotesYet: { es: "Aún no hay notas de voz", en: "No voice notes yet" },
   tapMicToRecord: {
@@ -106,7 +106,7 @@ const strings = {
 type StringKey = keyof typeof strings;
 
 export function t(key: StringKey, lang: Language, vars?: Record<string, string>): string {
-  let text = strings[key][lang];
+  let text: string = strings[key][lang];
   if (vars) {
     for (const [k, v] of Object.entries(vars)) {
       text = text.replace(`{${k}}`, v);

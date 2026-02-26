@@ -1,30 +1,26 @@
 import React, { useState } from "react";
-import { View, StyleSheet } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, TextInput } from "react-native";
+import { ActivityIndicator, Snackbar, useTheme } from "react-native-paper";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
-  Text,
-  Button,
-  useTheme,
-  Snackbar,
-  TextInput,
-} from "react-native-paper";
-import {
-  GoogleAuthProvider,
-  signInWithCredential,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
 } from "firebase/auth";
 import { auth } from "../src/config/firebase";
 import { useLanguage } from "../src/context/LanguageContext";
 import { t } from "../src/i18n";
-import LanguageToggle from "../src/components/LanguageToggle";
+import LanguageSelector from "../src/components/LanguageSelector";
 
 export default function SignInScreen() {
   const theme = useTheme();
   const { language } = useLanguage();
+  const insets = useSafeAreaInsets();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [emailFocused, setEmailFocused] = useState(false);
+  const [passwordFocused, setPasswordFocused] = useState(false);
 
   const handleEmailSignIn = async () => {
     if (!email.trim() || !password.trim()) return;
@@ -33,7 +29,6 @@ export default function SignInScreen() {
     try {
       await signInWithEmailAndPassword(auth, email.trim(), password);
     } catch (e: any) {
-      // If user doesn't exist, create account
       if (e.code === "auth/user-not-found" || e.code === "auth/invalid-credential") {
         try {
           await createUserWithEmailAndPassword(auth, email.trim(), password);
@@ -48,67 +43,88 @@ export default function SignInScreen() {
     }
   };
 
+  const disabled = loading || !email.trim() || !password.trim();
+
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      {/* Top bar with language selector */}
+      <View style={[styles.topBar, { paddingTop: insets.top + 10 }]}>
+        <LanguageSelector />
+      </View>
+
+      {/* Centered content */}
       <View style={styles.content}>
-        <Text
-          variant="displaySmall"
-          style={[styles.title, { color: theme.colors.primary }]}
-        >
+        <Text style={[styles.title, { color: theme.colors.onSurface }]}>
           {t("appName", language)}
         </Text>
-        <Text
-          variant="bodyLarge"
-          style={[styles.subtitle, { color: theme.colors.onSurfaceVariant }]}
-        >
+        <Text style={[styles.subtitle, { color: theme.colors.onSurfaceVariant }]}>
           {t("appTagline", language)}
         </Text>
 
         <View style={styles.form}>
           <TextInput
-            label={t("email", language)}
+            style={[
+              styles.input,
+              {
+                borderColor: emailFocused ? theme.colors.onSurface : theme.colors.outline,
+                backgroundColor: theme.colors.background,
+                color: theme.colors.onSurface,
+              },
+            ]}
+            placeholder={t("email", language)}
+            placeholderTextColor={theme.colors.onSurfaceVariant}
             value={email}
             onChangeText={setEmail}
-            mode="outlined"
             keyboardType="email-address"
             autoCapitalize="none"
-            style={styles.input}
-            disabled={loading}
-            left={<TextInput.Icon icon="email-outline" />}
+            editable={!loading}
+            onFocus={() => setEmailFocused(true)}
+            onBlur={() => setEmailFocused(false)}
           />
           <TextInput
-            label={t("password", language)}
+            style={[
+              styles.input,
+              {
+                borderColor: passwordFocused ? theme.colors.onSurface : theme.colors.outline,
+                backgroundColor: theme.colors.background,
+                color: theme.colors.onSurface,
+              },
+            ]}
+            placeholder={t("password", language)}
+            placeholderTextColor={theme.colors.onSurfaceVariant}
             value={password}
             onChangeText={setPassword}
-            mode="outlined"
             secureTextEntry
-            style={styles.input}
-            disabled={loading}
-            left={<TextInput.Icon icon="lock-outline" />}
+            editable={!loading}
+            onFocus={() => setPasswordFocused(true)}
+            onBlur={() => setPasswordFocused(false)}
             onSubmitEditing={handleEmailSignIn}
           />
-          <Button
-            mode="contained"
+          <TouchableOpacity
+            style={[
+              styles.button,
+              {
+                backgroundColor: theme.colors.primary,
+                opacity: disabled ? 0.5 : 1,
+              },
+            ]}
             onPress={handleEmailSignIn}
-            loading={loading}
-            disabled={loading || !email.trim() || !password.trim()}
-            style={styles.button}
-            contentStyle={styles.buttonContent}
-            icon="login"
+            disabled={disabled}
+            activeOpacity={0.85}
           >
-            {t("signInOrCreate", language)}
-          </Button>
+            {loading ? (
+              <ActivityIndicator size="small" color={theme.colors.onPrimary} />
+            ) : null}
+            <Text style={[styles.buttonText, { color: theme.colors.onPrimary }]}>
+              {t("signInOrCreate", language)}
+            </Text>
+          </TouchableOpacity>
         </View>
 
-        <Text
-          variant="bodySmall"
-          style={[styles.hint, { color: theme.colors.onSurfaceVariant }]}
-        >
+        <Text style={[styles.hint, { color: theme.colors.onSurfaceVariant }]}>
           {t("signInHint", language)}
         </Text>
       </View>
-
-      <LanguageToggle />
 
       <Snackbar
         visible={!!error}
@@ -126,35 +142,60 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  topBar: {
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+    alignItems: "flex-end",
+  },
   content: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    padding: 32,
+    paddingHorizontal: 32,
+    paddingBottom: 48,
   },
   title: {
-    fontWeight: "bold",
+    fontSize: 28,
+    fontWeight: "700",
+    letterSpacing: -0.5,
     marginBottom: 8,
   },
   subtitle: {
+    fontSize: 15,
     textAlign: "center",
     marginBottom: 48,
+    lineHeight: 22,
   },
   form: {
     width: "100%",
     maxWidth: 360,
   },
   input: {
+    width: "100%",
+    height: 44,
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
     marginBottom: 12,
+    fontSize: 15,
   },
   button: {
-    marginTop: 8,
+    width: "100%",
+    height: 44,
+    borderRadius: 8,
+    justifyContent: "center",
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 8,
+    marginTop: 4,
   },
-  buttonContent: {
-    paddingVertical: 6,
+  buttonText: {
+    fontSize: 15,
+    fontWeight: "600",
   },
   hint: {
     marginTop: 24,
+    fontSize: 13,
     textAlign: "center",
     opacity: 0.7,
   },

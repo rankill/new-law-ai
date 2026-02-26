@@ -1,10 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
-import { View, StyleSheet } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import {
-  Text,
-  IconButton,
   TextInput,
-  SegmentedButtons,
   useTheme,
   Snackbar,
 } from "react-native-paper";
@@ -14,7 +11,8 @@ import { saveVoiceNote, updateTranscript, updateNoteStatus } from "../src/servic
 import { transcribeAudio } from "../src/services/transcription";
 import { useLanguage } from "../src/context/LanguageContext";
 import { useAuth } from "../src/context/AuthContext";
-import { t, Language, LANGUAGES } from "../src/i18n";
+import { t, Language } from "../src/i18n";
+import LanguageSelector from "../src/components/LanguageSelector";
 
 function formatTime(seconds: number): string {
   const mins = Math.floor(seconds / 60);
@@ -62,15 +60,13 @@ export default function RecordScreen() {
       const { uri, duration } = await stopRecording();
       setIsRecording(false);
 
-      const noteTitle =
-        title.trim() || `Note ${new Date().toLocaleDateString()}`;
+      const noteTitle = title.trim() || `Note ${new Date().toLocaleDateString()}`;
+      const { noteId, audioUrl } = await saveVoiceNote(uri, noteTitle, duration, meetingLang, user!.uid);
 
-      // Save to Firebase with language and userId
-      const noteId = await saveVoiceNote(uri, noteTitle, duration, meetingLang, user!.uid);
-
-      // Transcribe in the selected meeting language
       try {
-        const transcript = await transcribeAudio(uri, meetingLang);
+        // Use the Firebase Storage URL so Deepgram fetches directly — avoids
+        // local file read issues and Content-Type guessing.
+        const transcript = await transcribeAudio(audioUrl, meetingLang);
         await updateTranscript(noteId, transcript);
       } catch (e: any) {
         console.warn("Transcription failed:", e.message);
@@ -88,85 +84,70 @@ export default function RecordScreen() {
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <View style={styles.content}>
-        <TextInput
-          label={t("noteTitleLabel", language)}
-          value={title}
-          onChangeText={setTitle}
-          mode="outlined"
-          style={styles.input}
-          disabled={isRecording || saving}
-        />
+        {/* Card container */}
+        <View style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.outline }]}>
+          <TextInput
+            label={t("noteTitleLabel", language)}
+            value={title}
+            onChangeText={setTitle}
+            mode="outlined"
+            style={styles.input}
+            disabled={isRecording || saving}
+          />
 
-        {/* Meeting language selector */}
-        <Text
-          variant="labelLarge"
-          style={[styles.langLabel, { color: theme.colors.onSurfaceVariant }]}
-        >
-          {t("meetingLanguage", language)}
-        </Text>
-        <SegmentedButtons
-          value={meetingLang}
-          onValueChange={(value) => setMeetingLang(value as Language)}
-          buttons={LANGUAGES.map((lang) => ({
-            value: lang.code,
-            label: `${lang.flag} ${lang.label}`,
-            disabled: isRecording || saving,
-          }))}
-          style={styles.langSelector}
-        />
+          {/* Meeting language row */}
+          <View style={styles.langRow}>
+            <Text style={[styles.langLabel, { color: theme.colors.onSurfaceVariant }]}>
+              {t("meetingLanguage", language)}
+            </Text>
+            <LanguageSelector
+              value={meetingLang}
+              onChange={(lang) => !isRecording && !saving && setMeetingLang(lang)}
+            />
+          </View>
+        </View>
 
+        {/* Timer */}
         <View style={styles.timerContainer}>
-          <Text
-            variant="displayLarge"
-            style={[styles.timer, { color: theme.colors.onSurface }]}
-          >
+          <Text style={[styles.timer, { color: theme.colors.onSurface }]}>
             {formatTime(elapsed)}
           </Text>
 
           {isRecording && (
             <View style={styles.recordingIndicator}>
-              <View
-                style={[
-                  styles.recordingDot,
-                  { backgroundColor: theme.colors.error },
-                ]}
-              />
-              <Text variant="labelLarge" style={{ color: theme.colors.error }}>
+              <View style={[styles.recordingDot, { backgroundColor: "#ef4444" }]} />
+              <Text style={[styles.recordingText, { color: "#ef4444" }]}>
                 {t("recording", language)}
               </Text>
             </View>
           )}
         </View>
 
+        {/* Record / Stop button */}
         <View style={styles.controls}>
           {!isRecording ? (
-            <IconButton
-              icon="microphone"
-              mode="contained"
-              size={48}
-              containerColor={theme.colors.primary}
-              iconColor={theme.colors.onPrimary}
+            <TouchableOpacity
+              style={[styles.recordBtn, { backgroundColor: theme.colors.primary }]}
               onPress={handleStart}
               disabled={saving}
-            />
+              activeOpacity={0.85}
+            >
+              <Text style={[styles.recordBtnIcon, { color: theme.colors.onPrimary }]}>🎙</Text>
+            </TouchableOpacity>
           ) : (
-            <IconButton
-              icon="stop"
-              mode="contained"
-              size={48}
-              containerColor={theme.colors.error}
-              iconColor={theme.colors.onPrimary}
+            <TouchableOpacity
+              style={[styles.recordBtn, { backgroundColor: "#ef4444" }]}
               onPress={handleStop}
               disabled={saving}
-            />
+              activeOpacity={0.85}
+            >
+              <Text style={[styles.recordBtnIcon, { color: "#ffffff" }]}>⏹</Text>
+            </TouchableOpacity>
           )}
         </View>
 
         {saving && (
-          <Text
-            variant="bodyMedium"
-            style={[styles.savingText, { color: theme.colors.onSurfaceVariant }]}
-          >
+          <Text style={[styles.savingText, { color: theme.colors.onSurfaceVariant }]}>
             {t("savingAndTranscribing", language)}
           </Text>
         )}
@@ -194,23 +175,40 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: 24,
   },
-  input: {
+  card: {
     width: "100%",
-    marginBottom: 24,
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 16,
+    marginBottom: 40,
+    shadowColor: "#000",
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 1,
+  },
+  input: {
+    marginBottom: 16,
+  },
+  langRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   langLabel: {
-    marginBottom: 8,
-  },
-  langSelector: {
-    marginBottom: 32,
+    fontSize: 14,
+    fontWeight: "500",
   },
   timerContainer: {
     alignItems: "center",
     marginBottom: 48,
   },
   timer: {
+    fontSize: 64,
+    fontWeight: "300",
     fontVariant: ["tabular-nums"],
     letterSpacing: 4,
+    fontFamily: "monospace",
   },
   recordingIndicator: {
     flexDirection: "row",
@@ -219,16 +217,34 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   recordingDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  recordingText: {
+    fontSize: 14,
+    fontWeight: "500",
   },
   controls: {
-    flexDirection: "row",
     alignItems: "center",
-    gap: 24,
+  },
+  recordBtn: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+  },
+  recordBtnIcon: {
+    fontSize: 28,
   },
   savingText: {
     marginTop: 24,
+    fontSize: 14,
   },
 });

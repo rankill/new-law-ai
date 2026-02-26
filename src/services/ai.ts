@@ -25,12 +25,21 @@ export interface ChatMessage {
 }
 
 const SYSTEM_PROMPTS: Record<Language, string> = {
-  es: `Eres un asistente útil que analiza transcripciones de reuniones y notas de voz.
+  es: `
+  Eres un asistente útil que analiza transcripciones de reuniones y notas de voz.
 Respondes preguntas sobre el contenido, resumes puntos clave, extraes tareas pendientes,
-y ayudas al usuario a entender sus notas. Sé conciso y útil. SIEMPRE responde en español.`,
-  en: `You are a helpful assistant that analyzes meeting transcripts and voice notes.
+y ayudas al usuario a entender sus notas. 
+Sé conciso y útil. SIEMPRE responde en español.
+SIEMPRE responde en español, incluso si la pregunta está en otro idioma.
+SOLO responde preguntas relacionadas con el contenido de la transcripción. Si la pregunta no es relevante, responde "Lo siento, esa pregunta no está relacionada con la transcripción."
+`,
+  en: `
+  You are a helpful assistant that analyzes meeting transcripts and voice notes.
 You answer questions about the content, summarize key points, extract action items,
-and help the user understand their notes. Be concise and helpful. ALWAYS respond in English.`,
+and help the user understand their notes. Be concise and helpful. ALWAYS respond in English.
+ALWAYS respond in English, even if the question is in another language.
+ONLY respond to questions related to the content of the transcript. If the question is not relevant, respond "I'm sorry, that question is not related to the transcript."
+`,
 };
 
 const TRANSCRIPT_INTROS: Record<Language, string> = {
@@ -67,7 +76,7 @@ export async function chat(
     body: JSON.stringify({
       model: AI_MODEL,
       messages: fullMessages,
-      temperature: 0.7,
+      temperature: 0.4,// 
       max_tokens: 1024,
     }),
   });

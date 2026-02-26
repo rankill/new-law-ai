@@ -1,6 +1,6 @@
 import React from "react";
-import { View, StyleSheet } from "react-native";
-import { Text, useTheme } from "react-native-paper";
+import { View, Text, StyleSheet } from "react-native";
+import { useTheme } from "react-native-paper";
 
 interface ChatBubbleProps {
   role: "user" | "assistant";
@@ -17,20 +17,18 @@ export default function ChatBubble({ role, content }: ChatBubbleProps) {
         style={[
           styles.bubble,
           {
-            backgroundColor: isUser
-              ? theme.colors.primaryContainer
-              : theme.colors.surfaceVariant,
+            backgroundColor: isUser ? theme.colors.primary : theme.colors.surfaceVariant,
             alignSelf: isUser ? "flex-end" : "flex-start",
           },
         ]}
       >
         <Text
-          variant="bodyMedium"
-          style={{
-            color: isUser
-              ? theme.colors.onPrimaryContainer
-              : theme.colors.onSurfaceVariant,
-          }}
+          style={[
+            styles.text,
+            {
+              color: isUser ? theme.colors.onPrimary : theme.colors.onSurface,
+            },
+          ]}
         >
           {content}
         </Text>
@@ -49,8 +47,12 @@ const styles = StyleSheet.create({
   },
   bubble: {
     maxWidth: "80%",
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 18,
+  },
+  text: {
+    fontSize: 15,
+    lineHeight: 21,
   },
 });

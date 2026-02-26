@@ -1,11 +1,14 @@
 import React, { useState, useCallback } from "react";
-import { View, FlatList, StyleSheet } from "react-native";
-import { FAB, Text, IconButton, useTheme, Snackbar } from "react-native-paper";
+import { View, Text, FlatList, StyleSheet, TouchableOpacity } from "react-native";
+import { IconButton, Snackbar, useTheme } from "react-native-paper";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, useFocusEffect } from "expo-router";
 import { signOut } from "firebase/auth";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { auth } from "../src/config/firebase";
 import NoteCard from "../src/components/NoteCard";
-import LanguageToggle from "../src/components/LanguageToggle";
+import NoteCardSkeleton from "../src/components/NoteCardSkeleton";
+import LanguageSelector from "../src/components/LanguageSelector";
 import { VoiceNote, getAllNotes, deleteNote } from "../src/services/storage";
 import { useLanguage } from "../src/context/LanguageContext";
 import { useAuth } from "../src/context/AuthContext";
@@ -19,6 +22,7 @@ export default function HomeScreen() {
   const theme = useTheme();
   const { language } = useLanguage();
   const { user } = useAuth();
+  const insets = useSafeAreaInsets();
 
   const loadNotes = useCallback(async () => {
     if (!user) return;
@@ -39,37 +43,54 @@ export default function HomeScreen() {
     }, [loadNotes])
   );
 
-  const handleDelete = async (note: VoiceNote) => {
-    try {
-      await deleteNote(note.id, note.audioUrl);
-      setNotes((prev) => prev.filter((n) => n.id !== note.id));
-    } catch (e: any) {
-      setError(e.message || "Failed to delete note");
-    }
+  const handleDelete = async (note: VoiceNote): Promise<void> => {
+    await deleteNote(note.id, note.audioUrl);
+    setNotes((prev) => prev.filter((n) => n.id !== note.id));
   };
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      {/* Header with title and sign out */}
-      <View style={styles.header}>
-        <Text variant="headlineMedium" style={{ color: theme.colors.onSurface }}>
+      {/* Header */}
+      <View
+        style={[
+          styles.header,
+          {
+            borderBottomColor: theme.colors.outline,
+            paddingTop: insets.top + 10,
+          },
+        ]}
+      >
+        <Text style={[styles.headerTitle, { color: theme.colors.onSurface }]}>
           {t("voiceNotes", language)}
         </Text>
-        <IconButton
-          icon="logout"
-          size={22}
-          onPress={() => signOut(auth)}
-          accessibilityLabel={t("signOut", language)}
-        />
+        <View style={styles.headerRight}>
+          <LanguageSelector />
+          <IconButton
+            icon="logout"
+            size={18}
+            onPress={() => signOut(auth)}
+            iconColor={theme.colors.onSurfaceVariant}
+            accessibilityLabel={t("signOut", language)}
+          />
+        </View>
       </View>
-      <LanguageToggle />
 
-      {notes.length === 0 && !loading ? (
+      {/* Content */}
+      {loading ? (
+        <View style={styles.skeletonList}>
+          {[0, 1, 2, 3].map((i) => (
+            <NoteCardSkeleton key={i} />
+          ))}
+        </View>
+      ) : notes.length === 0 ? (
         <View style={styles.empty}>
-          <Text variant="headlineSmall" style={styles.emptyText}>
+          <Text style={[styles.emptyIcon, { color: theme.colors.onSurfaceVariant }]}>
+            🎙
+          </Text>
+          <Text style={[styles.emptyText, { color: theme.colors.onSurface }]}>
             {t("noNotesYet", language)}
           </Text>
-          <Text variant="bodyMedium" style={styles.emptySubtext}>
+          <Text style={[styles.emptySubtext, { color: theme.colors.onSurfaceVariant }]}>
             {t("tapMicToRecord", language)}
           </Text>
         </View>
@@ -85,17 +106,30 @@ export default function HomeScreen() {
               onDelete={() => handleDelete(item)}
             />
           )}
-          contentContainerStyle={styles.list}
+          contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 88 }]}
         />
       )}
 
-      <FAB
-        icon="microphone"
-        label={t("record", language)}
-        style={[styles.fab, { backgroundColor: theme.colors.primary }]}
-        color={theme.colors.onPrimary}
+      {/* FAB */}
+      <TouchableOpacity
+        style={[
+          styles.fab,
+          { backgroundColor: theme.colors.primary, bottom: insets.bottom + 24 },
+        ]}
         onPress={() => router.push("/record")}
-      />
+        activeOpacity={0.85}
+        accessibilityLabel={t("record", language)}
+      >
+        <MaterialCommunityIcons
+          name="microphone"
+          size={20}
+          color={theme.colors.onPrimary}
+          style={styles.fabIcon}
+        />
+        <Text style={[styles.fabLabel, { color: theme.colors.onPrimary }]}>
+          {t("record", language)}
+        </Text>
+      </TouchableOpacity>
 
       <Snackbar
         visible={!!error}
@@ -117,31 +151,71 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 4,
+    paddingHorizontal: 20,
+    paddingBottom: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    letterSpacing: -0.3,
+  },
+  headerRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 0,
+    marginRight: -6,
+  },
+  skeletonList: {
+    paddingTop: 8,
   },
   list: {
     paddingTop: 8,
-    paddingBottom: 100,
   },
   empty: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    padding: 32,
+    paddingHorizontal: 40,
+    gap: 8,
+  },
+  emptyIcon: {
+    fontSize: 40,
+    marginBottom: 8,
+    opacity: 0.4,
   },
   emptyText: {
+    fontSize: 16,
+    fontWeight: "600",
     opacity: 0.6,
-    marginBottom: 8,
   },
   emptySubtext: {
-    opacity: 0.4,
+    fontSize: 13,
     textAlign: "center",
+    opacity: 0.45,
+    lineHeight: 19,
   },
   fab: {
     position: "absolute",
-    right: 16,
-    bottom: 32,
+    right: 20,
+    paddingHorizontal: 22,
+    paddingVertical: 13,
+    borderRadius: 26,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    shadowColor: "#000",
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 4,
+  },
+  fabIcon: {
+    marginTop: 1,
+  },
+  fabLabel: {
+    fontSize: 15,
+    fontWeight: "600",
+    letterSpacing: -0.1,
   },
 });

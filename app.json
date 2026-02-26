@@ -42,7 +42,8 @@
         {
           "microphonePermission": "Voice Notes AI needs access to your microphone to record meetings and voice notes."
         }
-      ]
+      ],
+      "expo-asset"
     ]
   }
 }
