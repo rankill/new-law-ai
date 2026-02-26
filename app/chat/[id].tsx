@@ -24,6 +24,8 @@ import AudioPlayer from "../../src/components/AudioPlayer";
 import { chat, ChatMessage } from "../../src/services/ai";
 import { useLanguage } from "../../src/context/LanguageContext";
 import { t, Language } from "../../src/i18n";
+import { audioManager } from "../../src/services/audioManager";
+import { TranscriptSegment } from "../../src/services/transcription";
 
 type Tab = "transcript" | "chat";
 
@@ -31,6 +33,7 @@ export default function ChatScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { language: appLanguage } = useLanguage();
   const [transcript, setTranscript] = useState("");
+  const [segments, setSegments] = useState<TranscriptSegment[]>([]);
   const [noteTitle, setNoteTitle] = useState("");
   const [noteLanguage, setNoteLanguage] = useState<Language>("es");
   const [audioUrl, setAudioUrl] = useState("");
@@ -46,6 +49,11 @@ export default function ChatScreen() {
 
   const uiLang = appLanguage;
 
+  // Stop any playing audio when entering this screen
+  useEffect(() => {
+    audioManager.stopCurrent();
+  }, []);
+
   useEffect(() => {
     loadNote();
   }, [id]);
@@ -56,6 +64,7 @@ export default function ChatScreen() {
       if (noteDoc.exists()) {
         const data = noteDoc.data();
         setTranscript(data.transcript || "");
+        setSegments(data.segments || []);
         setNoteTitle(data.title || "Voice Note");
         setNoteLanguage(data.language || "es");
         setAudioUrl(data.audioUrl || "");
@@ -148,9 +157,40 @@ export default function ChatScreen() {
           contentContainerStyle={styles.transcriptContent}
         >
           {transcript ? (
-            <Text style={{ color: theme.colors.onSurface, lineHeight: 24, fontSize: 15 }}>
-              {transcript}
-            </Text>
+            segments.length > 0 ? (
+              // Display speaker-separated segments
+              <View style={styles.segmentsContainer}>
+                {segments.map((segment, index) => {
+                  const speakerColors = [
+                    { bg: theme.dark ? "#1e3a8a" : "#dbeafe", text: theme.dark ? "#93c5fd" : "#1e40af" },
+                    { bg: theme.dark ? "#065f46" : "#d1fae5", text: theme.dark ? "#6ee7b7" : "#047857" },
+                    { bg: theme.dark ? "#7c2d12" : "#fed7aa", text: theme.dark ? "#fdba74" : "#c2410c" },
+                    { bg: theme.dark ? "#581c87" : "#f3e8ff", text: theme.dark ? "#c084fc" : "#7e22ce" },
+                  ];
+                  const colorIdx = segment.speaker % speakerColors.length;
+                  const colors = speakerColors[colorIdx];
+
+                  return (
+                    <View
+                      key={index}
+                      style={[styles.segmentBubble, { backgroundColor: colors.bg }]}
+                    >
+                      <Text style={[styles.speakerLabel, { color: colors.text }]}>
+                        {t("speaker", uiLang)} {segment.speaker + 1}
+                      </Text>
+                      <Text style={[styles.segmentText, { color: theme.colors.onSurface }]}>
+                        {segment.text}
+                      </Text>
+                    </View>
+                  );
+                })}
+              </View>
+            ) : (
+              // Fallback to plain text
+              <Text style={{ color: theme.colors.onSurface, lineHeight: 24, fontSize: 15 }}>
+                {transcript}
+              </Text>
+            )
           ) : (
             <View style={styles.emptyTranscript}>
               <Text style={{ color: theme.colors.onSurfaceVariant, textAlign: "center", fontSize: 15 }}>
@@ -304,6 +344,26 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     paddingTop: 80,
+  },
+  segmentsContainer: {
+    gap: 12,
+  },
+  segmentBubble: {
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 0,
+  },
+  speakerLabel: {
+    fontSize: 11,
+    fontWeight: "600",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginBottom: 6,
+    opacity: 0.9,
+  },
+  segmentText: {
+    fontSize: 15,
+    lineHeight: 22,
   },
   chatContainer: {
     flex: 1,

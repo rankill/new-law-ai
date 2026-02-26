@@ -45,6 +45,7 @@ const strings = {
     en: "Hide transcript",
   },
   transcript: { es: "Transcripción", en: "Transcript" },
+  speaker: { es: "Hablante", en: "Speaker" },
   noTranscript: {
     es: "Transcripción no disponible.",
     en: "No transcript available.",
@@ -101,6 +102,7 @@ const strings = {
   // General
   ok: { es: "OK", en: "OK" },
   language: { es: "Idioma", en: "Language" },
+  open: { es: "Abrir", en: "Open" },
 } as const;
 
 type StringKey = keyof typeof strings;

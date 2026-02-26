@@ -18,6 +18,7 @@ import {
 } from "firebase/storage";
 import { db, storage } from "../config/firebase";
 import { Language } from "../i18n";
+import { TranscriptSegment } from "./transcription";
 
 export interface VoiceNote {
   id: string;
@@ -25,6 +26,7 @@ export interface VoiceNote {
   duration: number; // seconds
   audioUrl: string;
   transcript: string;
+  segments?: TranscriptSegment[]; // Speaker-separated segments
   language: Language;
   userId: string;
   createdAt: Date;
@@ -67,11 +69,13 @@ export async function saveVoiceNote(
 
 export async function updateTranscript(
   noteId: string,
-  transcript: string
+  transcript: string,
+  segments?: TranscriptSegment[]
 ): Promise<void> {
   const noteRef = doc(db, COLLECTION, noteId);
   await updateDoc(noteRef, {
     transcript,
+    segments: segments || [],
     status: "ready",
   });
 }

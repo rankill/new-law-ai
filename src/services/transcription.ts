@@ -11,6 +11,18 @@ import { Language, DEEPGRAM_LANG } from "../i18n";
 const DEEPGRAM_API_KEY = process.env.EXPO_PUBLIC_DEEPGRAM_API_KEY || "";
 const DEEPGRAM_URL = "https://api.deepgram.com/v1/listen";
 
+export interface TranscriptSegment {
+  speaker: number; // 0, 1, 2, etc.
+  text: string;
+  start: number; // seconds
+  end: number; // seconds
+}
+
+export interface TranscriptionResult {
+  fullTranscript: string;
+  segments: TranscriptSegment[];
+}
+
 // Expo HIGH_QUALITY preset: .m4a on iOS/Android, .webm on web
 const NATIVE_CONTENT_TYPE = "audio/m4a";
 const WEB_CONTENT_TYPE = "audio/webm";
@@ -18,7 +30,7 @@ const WEB_CONTENT_TYPE = "audio/webm";
 export async function transcribeAudio(
   audioSource: string, // HTTPS URL (preferred) or local file:// URI
   language: Language = "es"
-): Promise<string> {
+): Promise<TranscriptionResult> {
   if (!DEEPGRAM_API_KEY) {
     throw new Error(
       "Deepgram API key not set. Add EXPO_PUBLIC_DEEPGRAM_API_KEY to your .env file."
@@ -31,6 +43,8 @@ export async function transcribeAudio(
     language: langCode,
     smart_format: "true",
     punctuate: "true",
+    diarize: "true", // Enable speaker diarization
+    utterances: "true", // Get utterance-level results with speakers
   });
 
   let requestInit: RequestInit;
@@ -83,10 +97,29 @@ export async function transcribeAudio(
 
   const data = await response.json();
 
-  const transcript =
+  // Get full transcript
+  const fullTranscript =
     data.results?.channels?.[0]?.alternatives?.[0]?.paragraphs?.transcript?.trim() ||
     data.results?.channels?.[0]?.alternatives?.[0]?.transcript?.trim() ||
     "";
 
-  return transcript;
+  // Extract speaker segments from utterances
+  const segments: TranscriptSegment[] = [];
+  const utterances = data.results?.utterances || [];
+
+  for (const utterance of utterances) {
+    if (utterance.transcript?.trim()) {
+      segments.push({
+        speaker: utterance.speaker ?? 0,
+        text: utterance.transcript.trim(),
+        start: utterance.start ?? 0,
+        end: utterance.end ?? 0,
+      });
+    }
+  }
+
+  return {
+    fullTranscript,
+    segments,
+  };
 }

@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
-import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, Modal, Animated } from "react-native";
 import {
   TextInput,
   useTheme,
   Snackbar,
 } from "react-native-paper";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { startRecording, stopRecording } from "../src/services/audio";
 import { saveVoiceNote, updateTranscript, updateNoteStatus } from "../src/services/storage";
@@ -30,6 +31,7 @@ export default function RecordScreen() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pulseAnim = useRef(new Animated.Value(1)).current;
   const router = useRouter();
   const theme = useTheme();
 
@@ -38,6 +40,28 @@ export default function RecordScreen() {
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, []);
+
+  useEffect(() => {
+    if (saving) {
+      // Pulsing animation
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 1.2,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    } else {
+      pulseAnim.setValue(1);
+    }
+  }, [saving]);
 
   const handleStart = async () => {
     try {
@@ -66,8 +90,8 @@ export default function RecordScreen() {
       try {
         // Use the Firebase Storage URL so Deepgram fetches directly — avoids
         // local file read issues and Content-Type guessing.
-        const transcript = await transcribeAudio(audioUrl, meetingLang);
-        await updateTranscript(noteId, transcript);
+        const result = await transcribeAudio(audioUrl, meetingLang);
+        await updateTranscript(noteId, result.fullTranscript, result.segments);
       } catch (e: any) {
         console.warn("Transcription failed:", e.message);
         await updateNoteStatus(noteId, "error");
@@ -132,7 +156,11 @@ export default function RecordScreen() {
               disabled={saving}
               activeOpacity={0.85}
             >
-              <Text style={[styles.recordBtnIcon, { color: theme.colors.onPrimary }]}>🎙</Text>
+              <MaterialCommunityIcons
+                name="microphone"
+                size={36}
+                color={theme.colors.onPrimary}
+              />
             </TouchableOpacity>
           ) : (
             <TouchableOpacity
@@ -141,17 +169,41 @@ export default function RecordScreen() {
               disabled={saving}
               activeOpacity={0.85}
             >
-              <Text style={[styles.recordBtnIcon, { color: "#ffffff" }]}>⏹</Text>
+              <MaterialCommunityIcons
+                name="stop"
+                size={36}
+                color="#ffffff"
+              />
             </TouchableOpacity>
           )}
         </View>
 
-        {saving && (
-          <Text style={[styles.savingText, { color: theme.colors.onSurfaceVariant }]}>
-            {t("savingAndTranscribing", language)}
-          </Text>
-        )}
       </View>
+
+      {/* Loading overlay */}
+      <Modal
+        visible={saving}
+        transparent
+        animationType="fade"
+      >
+        <View style={[styles.overlay, { backgroundColor: theme.dark ? "rgba(0,0,0,0.85)" : "rgba(0,0,0,0.75)" }]}>
+          <View style={[styles.loadingCard, { backgroundColor: theme.colors.surface }]}>
+            <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+              <MaterialCommunityIcons
+                name="cloud-upload"
+                size={48}
+                color={theme.colors.primary}
+              />
+            </Animated.View>
+            <Text style={[styles.loadingTitle, { color: theme.colors.onSurface }]}>
+              {t("savingAndTranscribing", language)}
+            </Text>
+            <Text style={[styles.loadingSubtitle, { color: theme.colors.onSurfaceVariant }]}>
+              Esto puede tomar unos segundos...
+            </Text>
+          </View>
+        </View>
+      </Modal>
 
       <Snackbar
         visible={!!error}
@@ -229,22 +281,44 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   recordBtn: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     justifyContent: "center",
     alignItems: "center",
     shadowColor: "#000",
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 6,
   },
-  recordBtnIcon: {
-    fontSize: 28,
+  overlay: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 40,
   },
-  savingText: {
-    marginTop: 24,
-    fontSize: 14,
+  loadingCard: {
+    padding: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    minWidth: 240,
+    shadowColor: "#000",
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 10,
+  },
+  loadingTitle: {
+    fontSize: 17,
+    fontWeight: "600",
+    marginTop: 20,
+    textAlign: "center",
+  },
+  loadingSubtitle: {
+    fontSize: 13,
+    marginTop: 6,
+    textAlign: "center",
+    opacity: 0.7,
   },
 });

@@ -81,20 +81,22 @@ export default function NoteCard({ note, language, onPress, onDelete }: NoteCard
 
   return (
     <>
-      <Pressable
-        style={({ pressed }) => [
+      <View
+        style={[
           styles.card,
           {
             backgroundColor: theme.colors.surface,
             borderColor: theme.colors.outline,
-            opacity: pressed ? 0.92 : 1,
           },
         ]}
-        onPress={onPress}
       >
         {/* Header row */}
         <View style={styles.cardHeader}>
-          <View style={styles.titleArea}>
+          <Pressable
+            style={styles.titleArea}
+            onPress={onPress}
+            android_ripple={{ color: theme.colors.surfaceVariant }}
+          >
             <Text
               style={[styles.title, { color: theme.colors.onSurface }]}
               numberOfLines={1}
@@ -104,7 +106,7 @@ export default function NoteCard({ note, language, onPress, onDelete }: NoteCard
             <Text style={[styles.meta, { color: theme.colors.onSurfaceVariant }]}>
               {formatDate(note.createdAt)} · {formatDuration(note.duration)}
             </Text>
-          </View>
+          </Pressable>
 
           {/* Delete button — shows spinner while deleting */}
           <TouchableOpacity
@@ -134,25 +136,36 @@ export default function NoteCard({ note, language, onPress, onDelete }: NoteCard
           </Text>
         ) : null}
 
-        {/* Audio player */}
+        {/* Audio player - non-interactive, doesn't navigate */}
         <AudioPlayer url={note.audioUrl} duration={note.duration} compact />
 
-        {/* Footer badges */}
+        {/* Footer with badges and open button */}
         <View style={styles.footer}>
-          <View style={[styles.badge, { backgroundColor: badge.bg }]}>
-            <Text style={[styles.badgeText, { color: badge.text }]}>
-              {t(statusKey[note.status], language)}
-            </Text>
-          </View>
-          {noteLang && (
-            <View style={[styles.badge, { backgroundColor: theme.colors.surfaceVariant }]}>
+          <View style={styles.badgesRow}>
+            <View style={[styles.badge, { backgroundColor: badge.bg }]}>
+              <Text style={[styles.badgeText, { color: badge.text }]}>
+                {t(statusKey[note.status], language)}
+              </Text>
+            </View>
+            {noteLang && (
               <Text style={[styles.badgeText, { color: theme.colors.onSurfaceVariant }]}>
                 {noteLang.flag}
               </Text>
-            </View>
-          )}
+            )}
+          </View>
+
+          {/* Open note button */}
+          <TouchableOpacity
+            style={[styles.openBtn, { backgroundColor: theme.colors.primaryContainer }]}
+            onPress={onPress}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.openBtnText, { color: theme.colors.onPrimaryContainer }]}>
+              {t("open", language)}
+            </Text>
+          </TouchableOpacity>
         </View>
-      </Pressable>
+      </View>
 
       {/* Delete confirm dialog */}
       <Modal
@@ -210,33 +223,36 @@ export default function NoteCard({ note, language, onPress, onDelete }: NoteCard
 const styles = StyleSheet.create({
   card: {
     marginHorizontal: 16,
-    marginVertical: 5,
-    borderRadius: 12,
+    marginVertical: 8,
+    borderRadius: 16,
     borderWidth: 1,
-    padding: 14,
+    padding: 16,
     shadowColor: "#000",
-    shadowOpacity: 0.03,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 1 },
-    elevation: 1,
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
   },
   cardHeader: {
     flexDirection: "row",
     alignItems: "flex-start",
-    marginBottom: 4,
+    marginBottom: 10,
   },
   titleArea: {
     flex: 1,
-    gap: 3,
+    gap: 4,
+    paddingRight: 8,
   },
   title: {
-    fontSize: 14,
-    fontWeight: "600",
-    letterSpacing: -0.1,
+    fontSize: 16,
+    fontWeight: "700",
+    letterSpacing: -0.3,
+    lineHeight: 22,
   },
   meta: {
-    fontSize: 11,
+    fontSize: 12,
     lineHeight: 16,
+    opacity: 0.7,
   },
   deleteBtn: {
     paddingLeft: 12,
@@ -250,24 +266,49 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   preview: {
-    fontSize: 13,
-    lineHeight: 18,
-    marginBottom: 2,
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 8,
+    opacity: 0.85,
   },
   footer: {
     flexDirection: "row",
-    gap: 5,
-    marginTop: 4,
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 12,
+    gap: 12,
+  },
+  badgesRow: {
+    flexDirection: "row",
+    gap: 6,
+    flex: 1,
+    flexWrap: "wrap",
+    alignItems: "center",
+  },
+  openBtn: {
+    paddingHorizontal: 18,
+    paddingVertical: 8,
+    borderRadius: 10,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 1,
+  },
+  openBtnText: {
+    fontSize: 13,
+    fontWeight: "700",
+    letterSpacing: 0.2,
   },
   badge: {
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 20,
-    alignSelf: "flex-start",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
   badgeText: {
-    fontSize: 10,
-    fontWeight: "500",
+    fontSize: 11,
+    fontWeight: "600",
+    letterSpacing: 0.3,
   },
   // Confirm dialog
   overlay: {
